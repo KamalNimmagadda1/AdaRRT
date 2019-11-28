@@ -12,19 +12,24 @@ from adarrt import AdaRRT
 
 
 def createBw():
-    """
-    Creates the bounds matrix for the TSR.
-
-    :returns: A 6x2 array Bw
-    """
-    ### FILL in your code here
-
-    return Bw
+	"""
+	Creates the bounds matrix for the TSR.
+	:returns: A 6x2 array Bw
+	"""
+	height = 0.0
+	### FILL in your code here
+	xmin,xmax = 0,0
+	ymin,ymax = 0,0
+	zmin,zmax= 0,0.02
+	psymin,psymax = 0,0
+	thetamin,thetamax = 0,0
+	phimin,phimax = -np.pi/2,np.pi/2
+	Bw = np.array([[xmin,xmax],[ymin,ymax],[zmin,zmax],[psymin,psymax],[thetamin,thetamax],[phimin,phimax]])
+	return Bw
 
 def createSodaTSR(soda_pose, hand):
     """
     Create the TSR for grasping a soda can.
-
     :param soda_pose: SE(3) transform from world to soda can.
     :param hand: ADA hand object
     :returns: A fully initialized TSR.
@@ -49,7 +54,6 @@ def createSodaTSR(soda_pose, hand):
 def van_der_corput(n_sample, base=2):
     """
     Van der Corput sequence.
-
     :param n_sample: number of elements in the sequence.
     :param base: base of the sequence.
     :return: The Van der Corput as a list.
@@ -107,7 +111,6 @@ def shortcut(waypoints, ada, collision_constraint, time_limit=7.0):
 def close_hand(hand, preshape):
     """
     Close the hand on the ADA.
-
     :param hand: ADA hand object
     :param preshape: The joint values as (f1, f2)
     :returns: None
@@ -177,7 +180,7 @@ def main(if_sim):
     sodaTSR = createSodaTSR(soda_pose, hand)
     marker = viewer.add_tsr_marker(sodaTSR)
     raw_input("Press ENTER to start planning goals...")
-
+    #sys.exit(1)
     # set up IK generator
     ik_sampleable = adapy.create_ik(
         arm_skeleton,
@@ -195,7 +198,7 @@ def main(if_sim):
         if len(goal_state) == 0:
             continue
         configurations.append(goal_state)
-
+	print(goal_state)
     if len(configurations) == 0:
         print("No valid configurations found!")
 
@@ -206,16 +209,22 @@ def main(if_sim):
     trajectory = None
     for configuration in configurations:
         # Aikido path planner
-        # trajectory = ada.plan_to_configuration(
-        #     arm_state_space, arm_skeleton, configuration)
-
+        trajectory = ada.plan_to_configuration(arm_state_space, arm_skeleton, configuration)
         # Your AdaRRT planner
         ### FILL in your code here
-
-        if trajectory:
+	adaRRT = AdaRRT(
+	start_state=np.array(arm_home),
+	goal_state=np.array(configuration),
+	ada=ada,
+	ada_collision_constraint=full_collision_constraint,
+	step_size=0.25,
+	goal_precision=1)
+    	path = adaRRT.build()
+	trajectory = path        
+	if trajectory!=None:
             break
 
-    if not trajectory:
+    if trajectory==None:
         print("Failed to find a solution!")
         sys.exit(1)
     else:
@@ -226,7 +235,6 @@ def main(if_sim):
     waypoints = []
     for i, waypoint in enumerate(trajectory):
         waypoints.append((0.0 + i, waypoint))
-
     # compute trajectory in joint space
     t0 = time.clock()
     traj = ada.compute_joint_space_path(ada.get_arm_state_space(), waypoints)
@@ -246,7 +254,8 @@ def main(if_sim):
     # execute the grasp
     print("Closing hand")
     ### FILL in your code here
-
+    preshape = np.array([1,1])
+    close_hand(hand,preshape)
     raw_input('Press ENTER after robot has succeeded closing the hand...')
     if if_sim:
         hand.grab(soda)
@@ -259,8 +268,12 @@ def main(if_sim):
         for i in range(N):
             q = arm_skeleton.get_positions()
             ### FILL in your code here
-
-            ada.set_positions(q)
+	    jacobian_frame = arm_skeleton.get_jacobian(hand.get_endeffector_body_node())
+	    pseudo_inv_jac = np.linalg.pinv(jacobian_frame)
+            delta_x = np.array([0, 0, 0, Dz, 0, 0])
+            delta_q = np.matmul(np.linalg.pinv(jacobian_frame), delta_x)
+            q = q + delta_q
+	    ada.set_positions(q)
             viewer.update()
             time.sleep(0.05)
     else:
