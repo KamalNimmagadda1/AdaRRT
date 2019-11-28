@@ -270,9 +270,9 @@ def main(if_sim):
             ### FILL in your code here
 	    jacobian_frame = arm_skeleton.get_jacobian(hand.get_endeffector_body_node())
 	    pseudo_inv_jac = np.linalg.pinv(jacobian_frame)
-            delta_x = np.array([0, 0, 0, 0.5, 0, 0])
+            delta_x = np.array([0, 0, 0, Dz, 0, 0])
             delta_q = np.matmul(np.linalg.pinv(jacobian_frame), delta_x)
-            q = q + Dz*delta_q
+            q = q + delta_q
 	    ada.set_positions(q)
             viewer.update()
             time.sleep(0.05)
