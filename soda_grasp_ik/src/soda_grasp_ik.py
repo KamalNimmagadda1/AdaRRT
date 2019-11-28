@@ -20,7 +20,7 @@ def createBw():
 	### FILL in your code here
 	xmin,xmax = 0,0
 	ymin,ymax = 0,0
-	zmin,zmax= 0,0.02
+	zmin,zmax= -0.02,0.02
 	psymin,psymax = 0,0
 	thetamin,thetamax = 0,0
 	phimin,phimax = -np.pi/2,np.pi/2
@@ -270,9 +270,9 @@ def main(if_sim):
             ### FILL in your code here
 	    jacobian_frame = arm_skeleton.get_jacobian(hand.get_endeffector_body_node())
 	    pseudo_inv_jac = np.linalg.pinv(jacobian_frame)
-            delta_x = np.array([0, 0, 0, Dz, 0, 0])
+            delta_x = np.array([0, 0, 0, 0.5, 0, 0])
             delta_q = np.matmul(np.linalg.pinv(jacobian_frame), delta_x)
-            q = q + delta_q
+            q = q + Dz*delta_q
 	    ada.set_positions(q)
             viewer.update()
             time.sleep(0.05)
